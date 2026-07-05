@@ -1,6 +1,6 @@
 # Campus Placement Portal
 
-An interview-ready full stack CRUD application built with React, TypeScript, Express, MySQL, JWT, and Tailwind CSS.
+Full stack CRUD application built with React, TypeScript, Express, MySQL, JWT, and Tailwind CSS.
 
 ## Features
 
