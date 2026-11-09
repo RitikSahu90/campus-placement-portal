@@ -32,6 +32,8 @@ public class AuthService {
 
   @Transactional
   public Map<String, Object> register(Requests.Register input) {
+    if (input.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
+      throw new ApiException(400, "Password must be no more than 72 UTF-8 bytes");
     if (!db.queryForList("SELECT id FROM users WHERE email = ?", input.email()).isEmpty())
       throw new ApiException(409, "Email is already registered");
     db.update(

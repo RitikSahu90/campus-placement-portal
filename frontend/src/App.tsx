@@ -1,4 +1,7 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import Footer from "./components/Footer";
+import HowItWorks from "./pages/HowItWorks";
+import NotFound from "./pages/NotFound";
+import { Route, Routes } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -16,6 +19,7 @@ export default function App() {
     <>
       <Navbar />
       <Routes>
+        <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -35,8 +39,9 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
+      <Footer />
     </>
   );
 }

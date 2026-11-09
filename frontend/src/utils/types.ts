@@ -9,6 +9,7 @@ export interface User {
 
 export interface Job {
   id: number;
+  recruiter_id: number;
   title: string;
   description: string;
   location: string;
@@ -33,6 +34,9 @@ export interface Profile {
 }
 
 export interface Application {
+  department?: string;
+  cgpa?: number | string;
+  cover_letter?: string;
   id: number;
   job_id: number;
   student_id: number;

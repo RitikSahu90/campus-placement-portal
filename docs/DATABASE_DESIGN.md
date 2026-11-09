@@ -29,7 +29,7 @@ Stores student profile details.
 | phone | VARCHAR(20) | Optional |
 | department | VARCHAR(100) | Optional |
 | graduation_year | INT | Optional |
-| cgpa | DECIMAL(3,2) | Optional |
+| cgpa | DECIMAL(4,2) | Optional |
 | skills | TEXT | Optional |
 | resume_url | VARCHAR(255) | Optional |
 | bio | TEXT | Optional |
@@ -85,3 +85,7 @@ Stores student applications for jobs.
 - `applications` has a unique constraint on `(job_id, student_id)` to prevent duplicate applications.
 - Foreign keys cascade deletes from users, companies, and jobs.
 - Indexes are added for role, job status/deadline, recruiter jobs, student applications, and application status.
+
+## Schema evolution
+
+Flyway migrations live in `backend/src/main/resources/db/migration/`. V1 creates the five tables when missing. V2 expands CGPA to `DECIMAL(4,2)` so 10.00 is valid. Existing project schemas are baselined at version 0; backup and staging verification are required before upgrading real data. The optional `database/schema.sql` script is a destructive demo initializer, not a production migration.

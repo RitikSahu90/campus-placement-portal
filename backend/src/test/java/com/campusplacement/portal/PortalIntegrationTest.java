@@ -287,4 +287,135 @@ class PortalIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
   }
+
+  @Test
+  void publicAdminRegistrationIsDisabled() throws Exception {
+    mvc.perform(
+            post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"name\":\"Untrusted"
+                        + " Admin\",\"email\":\"badadmin@example.com\",\"password\":\"Password@123\",\"role\":\"admin\"}"))
+        .andExpect(status().isBadRequest());
+    assertThat(
+            db.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email='badadmin@example.com'", Integer.class))
+        .isZero();
+  }
+
+  @Test
+  void recruiterOwnJobsEndpointIsProtectedAndScoped() throws Exception {
+    mvc.perform(get("/api/jobs/mine")).andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/jobs/mine").header("Authorization", login("student")))
+        .andExpect(status().isForbidden());
+    db.update(
+        "INSERT INTO users (name,email,password_hash,role) SELECT"
+            + " 'Other','scoped@example.com',password_hash,'recruiter' FROM users WHERE id=2");
+    db.update(
+        "INSERT INTO companies (recruiter_id,name) SELECT id,'Other Co' FROM users WHERE"
+            + " email='scoped@example.com'");
+    db.update(
+        "INSERT INTO jobs (company_id,recruiter_id,title,description,location,deadline) SELECT"
+            + " c.id,c.recruiter_id,'Other role','Other work','Remote','2099-01-01' FROM companies"
+            + " c WHERE c.name='Other Co'");
+    mvc.perform(get("/api/jobs/mine").header("Authorization", login("recruiter")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(2))
+        .andExpect(jsonPath("$.data[0].recruiter_id").value(2));
+  }
+
+  @Test
+  void recruiterCanUpdateApplicantAndStudentSeesIt() throws Exception {
+    mvc.perform(
+            patch("/api/applications/1/status")
+                .header("Authorization", login("student"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"selected\"}"))
+        .andExpect(status().isForbidden());
+    String recruiter = login("recruiter");
+    mvc.perform(
+            patch("/api/applications/1/status")
+                .header("Authorization", recruiter)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"shortlisted\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.status").value("shortlisted"));
+    mvc.perform(get("/api/applications").header("Authorization", login("student")))
+        .andExpect(jsonPath("$.data[0].status").value("shortlisted"));
+    mvc.perform(
+            patch("/api/applications/1/status")
+                .header("Authorization", recruiter)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"invented\"}"))
+        .andExpect(status().isBadRequest());
+    db.update("UPDATE jobs SET recruiter_id=3 WHERE id=1");
+    mvc.perform(
+            patch("/api/applications/1/status")
+                .header("Authorization", recruiter)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"selected\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void deletedAccountTokensAreRejectedAndAdminsCannotDeleteThemselves() throws Exception {
+    String student = login("student");
+    String admin = login("admin");
+    mvc.perform(delete("/api/users/3").header("Authorization", admin))
+        .andExpect(status().isBadRequest());
+    mvc.perform(delete("/api/users/1").header("Authorization", admin)).andExpect(status().isOk());
+    mvc.perform(get("/api/profile").header("Authorization", student))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void perfectCgpaAcceptedAndUnsafeResumeUrlRejected() throws Exception {
+    String student = login("student");
+    mvc.perform(
+            put("/api/profile")
+                .header("Authorization", student)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"cgpa\":10,\"resumeUrl\":\"https://example.com/resume.pdf\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.cgpa").value(10));
+    mvc.perform(
+            put("/api/profile")
+                .header("Authorization", student)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"resumeUrl\":\"javascript:alert(1)\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void healthProbeDoesNotExposeDatabaseDetails() throws Exception {
+    mvc.perform(get("/actuator/health/readiness"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"))
+        .andExpect(jsonPath("$.components").doesNotExist());
+  }
+
+  @Test
+  void adminBootstrapValidatesAndCreatesOnlyInitialAdmin() throws Exception {
+    var passwords = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+    var bootstrap =
+        new AdminBootstrap(db, passwords, "privateadmin@example.com", "StrongSecret@123");
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> bootstrap.run(null))
+        .isInstanceOf(IllegalStateException.class);
+    db.update("DELETE FROM users WHERE role='admin'");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> new AdminBootstrap(db, passwords, "invalid-email", "weak").run(null))
+        .isInstanceOf(IllegalArgumentException.class);
+    bootstrap.run(null);
+    String hash =
+        db.queryForObject(
+            "SELECT password_hash FROM users WHERE email='privateadmin@example.com'", String.class);
+    assertThat(passwords.matches("StrongSecret@123", hash)).isTrue();
+    mvc.perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\"privateadmin@example.com\",\"password\":\"StrongSecret@123\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.user.role").value("admin"));
+  }
 }

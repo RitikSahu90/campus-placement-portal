@@ -35,10 +35,26 @@ public class SecurityConfig {
   }
 
   @Bean
-  JwtDecoder jwtDecoder(SecretKeySpec key) {
+  JwtDecoder jwtDecoder(SecretKeySpec key, org.springframework.jdbc.core.JdbcTemplate db) {
     NimbusJwtDecoder decoder =
         NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
-    decoder.setJwtValidator(new JwtTimestampValidator(Duration.ZERO));
+    org.springframework.security.oauth2.core.OAuth2TokenValidator<Jwt> accountValidator =
+        jwt -> {
+          Object id = jwt.getClaim("id");
+          String role = jwt.getClaimAsString("role");
+          if (id instanceof Number number
+              && role != null
+              && !db.queryForList(
+                      "SELECT id FROM users WHERE id=? AND role=?", number.longValue(), role)
+                  .isEmpty())
+            return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success();
+          return org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
+              new org.springframework.security.oauth2.core.OAuth2Error(
+                  "invalid_token", "Account is unavailable or its role has changed", null));
+        };
+    decoder.setJwtValidator(
+        new org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator<>(
+            new JwtTimestampValidator(Duration.ZERO), accountValidator));
     return decoder;
   }
 
@@ -51,7 +67,7 @@ public class SecurityConfig {
   CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-url}") String origin) {
     CorsConfiguration c = new CorsConfiguration();
     c.setAllowedOrigins(List.of(origin));
-    c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type"));
     c.setAllowCredentials(true);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -70,7 +86,13 @@ public class SecurityConfig {
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             a ->
-                a.requestMatchers(HttpMethod.OPTIONS, "/**")
+                a.requestMatchers(HttpMethod.GET, "/api/jobs/mine")
+                    .hasRole("recruiter")
+                    .requestMatchers(HttpMethod.PATCH, "/api/applications/*/status")
+                    .hasRole("recruiter")
+                    .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/health", "/api/jobs", "/api/jobs/*")
                     .permitAll()

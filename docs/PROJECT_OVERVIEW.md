@@ -40,7 +40,7 @@ The Java 21 / Spring Boot backend uses a controller-service structure:
 - `ApiExceptionHandler` produces consistent JSON errors.
 - Application responses retain snake_case database fields and camelCase request DTOs for React compatibility.
 - Configuration comes from environment variables or an optional backend `.env` properties file.
-- Database creation/seeding is explicit; application startup never drops or recreates tables.
+- Database creation/seeding is explicit; Flyway creates missing tables and applies migrations at startup, without dropping existing project tables.
 
 The frontend uses React Router for pages, an auth context for session state, and Axios service modules for API calls.
 
@@ -49,5 +49,7 @@ The frontend uses React Router for pages, an auth context for session state, and
 - Resume upload is stored as a URL field instead of S3 upload to keep the project focused.
 - Recruiters maintain one company record by posting or editing jobs. Company name changes affect all jobs for that company.
 - Application submission checks job status and deadline; duplicate applications return HTTP 409.
-- Admin registration is allowed for local/demo use. In production, admin creation should be restricted.
-- Application status updates are modeled in the database, but the UI keeps the workflow simple.
+- Public registration supports student/recruiter roles only. Admin provisioning uses an explicit bootstrap profile.
+- Recruiters update applied/shortlisted/rejected/selected statuses for applicants to their own jobs.
+- Demo homepage profiles and reviews are presentation placeholders; they never create database records.
+- Flyway applies versioned schema changes without invoking the destructive demo import scripts.

@@ -26,6 +26,26 @@ public class PortalService {
     return db.queryForList(JOBS + " ORDER BY jobs.created_at DESC");
   }
 
+  public List<Map<String, Object>> recruiterJobs(long recruiter) {
+    return db.queryForList(
+        JOBS + " WHERE jobs.recruiter_id=? ORDER BY jobs.created_at DESC", recruiter);
+  }
+
+  @Transactional
+  public Map<String, Object> updateApplication(
+      long id, long recruiter, Requests.ApplicationStatus input) {
+    var application =
+        one(
+            "SELECT applications.id, jobs.recruiter_id FROM applications JOIN jobs ON"
+                + " jobs.id=applications.job_id WHERE applications.id=? FOR UPDATE",
+            "Application not found",
+            id);
+    if (((Number) application.get("recruiter_id")).longValue() != recruiter)
+      throw new ApiException(403, "Only the job owner can update this application");
+    db.update("UPDATE applications SET status=? WHERE id=?", input.status(), id);
+    return one(APPLICATION + " WHERE applications.id=?", "Application not found", id);
+  }
+
   public Map<String, Object> job(long id) {
     return one(JOBS + " WHERE jobs.id=?", "Job not found", id);
   }

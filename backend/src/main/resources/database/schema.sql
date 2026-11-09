@@ -24,7 +24,7 @@ CREATE TABLE profiles (
   phone VARCHAR(20),
   department VARCHAR(100),
   graduation_year INT,
-  cgpa DECIMAL(3,2),
+  cgpa DECIMAL(4,2),
   skills TEXT,
   resume_url VARCHAR(255),
   bio TEXT,

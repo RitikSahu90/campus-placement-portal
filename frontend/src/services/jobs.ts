@@ -1,5 +1,5 @@
 import api from "./api";
-import { ApiResponse, Job } from "../utils/types";
+import { ApiResponse, Job, Application } from "../utils/types";
 
 export interface JobPayload {
   companyName?: string;
@@ -38,11 +38,25 @@ export async function deleteJob(id: number) {
 }
 
 export async function applyToJob(jobId: number, coverLetter: string) {
-  const response = await api.post<ApiResponse<unknown>>("/applications", { jobId, coverLetter });
+  const response = await api.post<ApiResponse<Application>>("/applications", {
+    jobId,
+    coverLetter,
+  });
   return response.data.data;
 }
 
 export async function fetchApplications() {
-  const response = await api.get<ApiResponse<unknown[]>>("/applications");
+  const response = await api.get<ApiResponse<Application[]>>("/applications");
   return response.data.data;
+}
+
+export async function fetchMyJobs() {
+  return (await api.get<ApiResponse<Job[]>>("/jobs/mine")).data.data;
+}
+export async function updateApplicationStatus(id: number, status: string) {
+  return (
+    await api.patch<ApiResponse<Application>>(`/applications/${id}/status`, {
+      status,
+    })
+  ).data.data;
 }

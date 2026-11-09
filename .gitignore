@@ -11,3 +11,8 @@ npm-debug.log
 target/
 .idea/
 *.iml
+
+# Environment files may contain deployment secrets
+.env.*
+!.env.example
+!.env.production.example

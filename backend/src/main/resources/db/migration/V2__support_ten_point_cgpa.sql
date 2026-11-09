@@ -1,0 +1,1 @@
+ALTER TABLE profiles MODIFY COLUMN cgpa DECIMAL(4,2);

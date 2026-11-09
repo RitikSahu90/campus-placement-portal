@@ -1,66 +1,125 @@
 import { FormEvent, useState } from "react";
+import { ArrowRight, Building2, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useRedirectByRole } from "../hooks/useRedirectByRole";
-import { UserRole } from "../utils/types";
-
+import AuthLayout from "../components/AuthLayout";
+import { Feedback } from "../components/UI";
+import { errorMessage } from "../services/api";
 export default function Register() {
   const { register } = useAuth();
-  const redirectByRole = useRedirectByRole();
+  const redirect = useRedirectByRole();
   const [error, setError] = useState("");
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [busy, setBusy] = useState(false);
+  const [role, setRole] = useState<"student" | "recruiter">("student");
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
     const form = new FormData(event.currentTarget);
-
+    const password = String(form.get("password"));
+    if (new TextEncoder().encode(password).length > 72) {
+      setError("Use a password of no more than 72 UTF-8 bytes.");
+      return;
+    }
+    setError("");
+    setBusy(true);
     try {
       const user = await register(
-        String(form.get("name")),
-        String(form.get("email")),
-        String(form.get("password")),
-        String(form.get("role")) as UserRole
+        String(form.get("name")).trim(),
+        String(form.get("email")).trim(),
+        password,
+        role,
       );
-      redirectByRole(user.role);
-    } catch {
-      setError("Registration failed. Try another email.");
+      redirect(user.role);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
-
   return (
-    <main className="mx-auto max-w-md px-4 py-12">
-      <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-950">Register</h1>
-        {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Name
-            <input name="name" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
+    <AuthLayout>
+      <p className="eyebrow">Start with possibility</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+        Your story starts here.
+      </h2>
+      <p className="muted mb-6 mt-3">Choose your side of the opportunity.</p>
+      <fieldset disabled={busy} className="mb-6 grid grid-cols-2 gap-3">
+        <legend className="sr-only">Account type</legend>
+        {(
+          [
+            { value: "student", label: "I’m a student", icon: GraduationCap },
+            { value: "recruiter", label: "I’m hiring", icon: Building2 },
+          ] as const
+        ).map(({ value, label, icon: Icon }) => (
+          <label
+            key={value}
+            className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-xs font-medium ${role === value ? "border-[#8fa66c] bg-[#f1f6e8]" : "border-[#e0e6d8]"}`}
+          >
+            <input
+              name="role"
+              type="radio"
+              value={value}
+              checked={role === value}
+              onChange={() => setRole(value)}
+              className="accent-[#456b2e]"
+            />
+            <Icon className="h-4 w-4" />
+            {label}
           </label>
-          <label className="block text-sm font-medium text-gray-700">
-            Email
-            <input name="email" type="email" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-          </label>
-          <label className="block text-sm font-medium text-gray-700">
-            Password
-            <input name="password" type="password" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-          </label>
-          <label className="block text-sm font-medium text-gray-700">
-            Role
-            <select name="role" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2">
-              <option value="student">Student</option>
-              <option value="recruiter">Recruiter</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-          <button className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
-            Create Account
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-gray-600">
-          Already registered? <Link className="font-semibold text-blue-700" to="/login">Login</Link>
-        </p>
-      </div>
-    </main>
+        ))}
+      </fieldset>
+      <Feedback>{error}</Feedback>
+      <form onSubmit={submit} className="mt-5 space-y-4">
+        <label className="label">
+          Full name
+          <input
+            name="name"
+            required
+            maxLength={100}
+            autoComplete="name"
+            placeholder="Your full name"
+            className="field"
+          />
+        </label>
+        <label className="label">
+          Email address
+          <input
+            name="email"
+            type="email"
+            required
+            maxLength={150}
+            autoComplete="email"
+            placeholder="you@college.edu"
+            className="field"
+          />
+        </label>
+        <label className="label">
+          Password
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            maxLength={72}
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            className="field"
+          />
+          <span className="hint block">
+            Use a unique password with a mix of words, numbers, or symbols.
+          </span>
+        </label>
+        <button disabled={busy} className="btn-primary w-full">
+          {busy ? "Creating your account…" : "Create my account"}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </form>
+      <p className="mt-6 text-sm text-[#5f6e57]">
+        Already part of Campus?{" "}
+        <Link to="/login" className="font-semibold text-[#375a27]">
+          Sign in
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

@@ -54,6 +54,20 @@ public class PortalController {
     return ApiResponse.ok("Jobs fetched", portal.jobs());
   }
 
+  @GetMapping("/jobs/mine")
+  public ApiResponse recruiterJobs(@AuthenticationPrincipal Jwt jwt) {
+    return ApiResponse.ok("Your jobs fetched", portal.recruiterJobs(id(jwt)));
+  }
+
+  @PatchMapping("/applications/{id}/status")
+  public ApiResponse updateApplication(
+      @AuthenticationPrincipal Jwt jwt,
+      @PathVariable long id,
+      @Valid @RequestBody Requests.ApplicationStatus input) {
+    return ApiResponse.ok(
+        "Application status updated", portal.updateApplication(id, id(jwt), input));
+  }
+
   @GetMapping("/jobs/{id}")
   public ApiResponse job(@PathVariable long id) {
     return ApiResponse.ok("Job fetched", portal.job(id));
@@ -99,7 +113,9 @@ public class PortalController {
   }
 
   @DeleteMapping("/users/{id}")
-  public ApiResponse deleteUser(@PathVariable long id) {
+  public ApiResponse deleteUser(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+    if (id == id(jwt))
+      throw new ApiException(400, "You cannot delete your own administrator account");
     portal.deleteUser(id);
     return ApiResponse.ok("User deleted", null);
   }

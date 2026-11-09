@@ -39,7 +39,7 @@ cp .env.example .env
 ./mvnw spring-boot:run
 ```
 
-On Windows use `mvnw.cmd`. The backend reads `.env` as Java properties from its working directory. Environment variables override file values. `JWT_TTL` is an ISO-8601 duration such as `PT24H`. API: `http://localhost:5000/api`; health: `/api/health`.
+On Windows use `mvnw.cmd`. The backend reads `.env` as Java properties from its working directory. Environment variables override file values. `JWT_TTL` is an ISO-8601 duration; the default is `PT1H` (one hour). API: `http://localhost:5000/api`; health: `/api/health`.
 
 ```bash
 cd backend
@@ -47,7 +47,7 @@ cd backend
 java -jar target/placement-portal-1.0.0.jar
 ```
 
-Tests run against an isolated H2 database in MySQL compatibility mode. Production uses MySQL; tests do not modify your MySQL data.
+Tests run against isolated H2 databases in MySQL compatibility mode. Production uses MySQL; tests do not modify your MySQL data.
 
 ### Frontend
 
@@ -92,9 +92,22 @@ The Node/Express backend has been removed; Node is used only to build/run the Re
 
 ## Demo limitations
 
-Admin self-registration remains available for compatibility with the existing demo UI; restrict admin provisioning before public deployment. Resume storage is a URL field. Eligibility criteria are descriptive text. Application status values are modeled in SQL but there is no status-update endpoint. Logout clears the browser token; issued JWTs remain valid until expiry.
+Public admin signup is disabled. Use the opt-in bootstrap profile for the first production administrator. Recruiters can update statuses on applications to their own jobs. Resume storage is a URL field and academic eligibility is reviewed by recruiters. Homepage profiles/reviews are clearly labeled placeholders. Logout clears the tab’s session token; stolen copies are not centrally revoked. See the deployment guide for the remaining launch requirements.
+
+## Professional interface and deployment foundation
+
+- Responsive sage/cream design, accessible navigation, labeled forms, and account workspaces
+- Search, job filters, result pagination, live saved-profile preview, and application status tracking
+- Recruiter-owned jobs and applicant management; admin confirmations and self-deletion protection
+- Flyway migrations, database readiness probes, separate production configuration, and CI builds
+- Clearly labeled demo profiles and sample reviews; no fabricated endorsements or ratings
+
+For a fresh non-demo installation, create the database and let Flyway create tables at backend startup. Manual schema import above is only for disposable demos. Production does not automatically import demo accounts.
 
 ## Documentation
+
+- [How everything works](docs/HOW_IT_WORKS.md)
+- [Local setup and production deployment](docs/DEPLOYMENT.md)
 
 - [Project Overview](docs/PROJECT_OVERVIEW.md)
 - [Database Design](docs/DATABASE_DESIGN.md)

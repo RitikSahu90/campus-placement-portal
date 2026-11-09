@@ -97,7 +97,7 @@ Body:
   "salary": "25000/month",
   "jobType": "internship",
   "eligibilityCriteria": "CGPA 7.0 and above",
-  "deadline": "2026-08-15",
+  "deadline": "2099-12-31",
   "status": "open"
 }
 ```
@@ -158,4 +158,31 @@ Admin only. Deletes any job.
 - Closed or expired jobs reject applications with HTTP 400; eligibility text is not automatically evaluated.
 - Profiles remain student-only. Recruiter edits/deletes require job ownership; admins can delete any job.
 - `GET /health` is public and reports API availability, not a database readiness probe.
-- Logout is performed in the React client by clearing its JWT.
+- Logout is performed in the React client by clearing its tab-scoped session JWT.
+- Default token lifetime is one hour. Deleted accounts and changed roles invalidate existing tokens on subsequent API requests.
+- Public registration accepts only `student` or `recruiter`; `admin` is rejected.
+- Profiles accept CGPA 0–10 and HTTP/HTTPS resume links.
+
+## Recruiter-owned jobs
+
+### GET /jobs/mine
+
+Recruiter only. Returns jobs owned by the current account. This route is matched before `/jobs/:id`.
+
+## Application status updates
+
+### PATCH /applications/:id/status
+
+Recruiter only. The application must belong to one of the recruiter’s own jobs.
+
+```json
+{"status":"shortlisted"}
+```
+
+Allowed values: `applied`, `shortlisted`, `rejected`, `selected`. Returns the updated application. Wrong ownership returns 403; invalid status returns 400.
+
+## Operational health
+
+`GET /actuator/health` and `/actuator/health/readiness` are outside the `/api` base path. Readiness includes the database check. These are intended for internal container health checks and do not expose component details. They are not automatically proxied through the frontend’s `/api` location.
+
+An administrator cannot delete their own account (400). Nginx rejects oversized bodies and rate-limits login/signup traffic; direct development API requests do not pass through Nginx.

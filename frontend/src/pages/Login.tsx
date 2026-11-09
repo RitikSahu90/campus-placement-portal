@@ -1,53 +1,100 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useRedirectByRole } from "../hooks/useRedirectByRole";
-
+import AuthLayout from "../components/AuthLayout";
+import { Feedback } from "../components/UI";
+import { errorMessage } from "../services/api";
 export default function Login() {
   const { login } = useAuth();
-  const redirectByRole = useRedirectByRole();
+  const redirect = useRedirectByRole();
+  const [params] = useSearchParams();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [busy, setBusy] = useState(false);
+  const [visible, setVisible] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setLoading(true);
+    setBusy(true);
     const form = new FormData(event.currentTarget);
-
     try {
-      const user = await login(String(form.get("email")), String(form.get("password")));
-      redirectByRole(user.role);
-    } catch {
-      setError("Invalid email or password.");
+      const user = await login(
+        String(form.get("email")),
+        String(form.get("password")),
+      );
+      redirect(user.role);
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
-
   return (
-    <main className="mx-auto max-w-md px-4 py-12">
-      <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-950">Login</h1>
-        <p className="mt-2 text-sm text-gray-600">Use seeded accounts with password Password@123.</p>
-        {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Email
-            <input name="email" type="email" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-          </label>
-          <label className="block text-sm font-medium text-gray-700">
-            Password
-            <input name="password" type="password" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-          </label>
-          <button disabled={loading} className="w-full rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-gray-600">
-          New here? <Link className="font-semibold text-blue-700" to="/register">Create an account</Link>
-        </p>
-      </div>
-    </main>
+    <AuthLayout>
+      <p className="eyebrow">Your next chapter awaits</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+        Welcome back.
+      </h2>
+      <p className="muted mb-6 mt-3">Sign in to pick up where you left off.</p>
+      {params.has("expired") && (
+        <div className="mb-4">
+          <Feedback>Your session ended. Sign in to continue.</Feedback>
+        </div>
+      )}
+      <Feedback>{error}</Feedback>
+      <form className="mt-6 space-y-5" onSubmit={submit}>
+        <label className="label">
+          Email address
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@college.edu"
+            className="field"
+          />
+        </label>
+        <label className="label">
+          Password
+          <span className="relative block">
+            <input
+              name="password"
+              type={visible ? "text" : "password"}
+              required
+              autoComplete="current-password"
+              placeholder="Your password"
+              className="field pr-12"
+            />
+            <button
+              type="button"
+              aria-label={visible ? "Hide password" : "Show password"}
+              className="absolute right-3 top-3 rounded p-1 text-[#859475]"
+              onClick={() => setVisible(!visible)}
+            >
+              {visible ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </span>
+        </label>
+        <button disabled={busy} className="btn-primary w-full">
+          {busy ? "Signing in…" : "Sign in"}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </form>
+      <p className="mt-6 text-sm text-[#5f6e57]">
+        New to Campus?{" "}
+        <Link to="/register" className="font-semibold text-[#375a27]">
+          Create an account
+        </Link>
+      </p>
+      <p className="hint mt-5 border-t border-[#e8eddf] pt-5">
+        Your session stays in this browser tab and ends when you close it or
+        sign out.
+      </p>
+    </AuthLayout>
   );
 }
