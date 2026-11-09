@@ -6,3 +6,8 @@ build
 npm-debug.log
 .DS_Store
 *.pem
+
+# Java / Maven
+target/
+.idea/
+*.iml

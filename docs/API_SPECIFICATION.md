@@ -149,3 +149,13 @@ Admins can use the same public jobs endpoint for viewing jobs.
 ### DELETE /jobs/:id
 
 Admin only. Deletes any job.
+
+## Spring Boot backend notes
+
+- Existing paths, bearer authentication, response envelopes, and database response field names are preserved.
+- Registration passwords must contain 8–72 characters; JWT secrets must have at least 32 UTF-8 bytes.
+- Invalid request DTOs return HTTP 400. Duplicate emails/applications return HTTP 409.
+- Closed or expired jobs reject applications with HTTP 400; eligibility text is not automatically evaluated.
+- Profiles remain student-only. Recruiter edits/deletes require job ownership; admins can delete any job.
+- `GET /health` is public and reports API availability, not a database readiness probe.
+- Logout is performed in the React client by clearing its JWT.

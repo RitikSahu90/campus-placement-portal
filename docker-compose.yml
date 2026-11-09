@@ -1,46 +1,46 @@
-version: '3.8'
-
 services:
   db:
     image: mysql:8.0
-    restart: always
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: placement_portal
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: campus_placement_portal
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
-      # Automatically run these scripts on first startup
-      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
-      - ./backend/src/database/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
-
+      - ./backend/src/main/resources/database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
+      - ./backend/src/main/resources/database/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: always
+    build: ./backend
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
-      - PORT=5000
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASS=root
-      - DB_NAME=placement_portal
-      - JWT_SECRET=super_secret_key_change_me_in_production
+      PORT: 5000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_NAME: campus_placement_portal
+      JWT_SECRET: ${JWT_SECRET:-local_demo_secret_replace_with_at_least_32_bytes}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
     depends_on:
-      - db
-
+      db:
+        condition: service_healthy
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    restart: always
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
-
 volumes:
   db_data:

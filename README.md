@@ -1,80 +1,98 @@
 # Campus Placement Portal
 
-Full stack CRUD application built with React, TypeScript, Express, MySQL, JWT, and Tailwind CSS.
+Campus recruitment application with a React frontend and a Java Spring Boot backend.
 
 ## Features
 
-- Student, recruiter, and admin roles
-- Register, login, logout, JWT authentication
-- Student profile editing and job applications
-- Recruiter company/job management and applicant viewing
-- Admin user and job management
-- Normalized MySQL schema with seed data
-- Consistent API responses and role-based authorization
+- Student, recruiter, and admin roles with JWT authentication
+- Student academic profiles, resume URLs, job browsing, and applications
+- Recruiter company/job management and applicant lists
+- Admin user/job management
+- MySQL schema, demo data, ownership checks, duplicate-application protection
 
-## Tech Stack
+## Stack
 
-Frontend: React, TypeScript, Vite, Tailwind CSS, Axios, React Router  
-Backend: Node.js, Express.js, TypeScript, MySQL, mysql2, JWT, bcrypt, dotenv, cors
+Frontend: React 18, TypeScript, Vite, Tailwind CSS, Axios, React Router.
+Backend: Java 21, Spring Boot 4.1, Spring Web MVC, Spring Security, OAuth2 JWT resource server, Bean Validation, Spring JDBC, MySQL, BCrypt.
 
-## Getting Started
+## Local setup
 
-Use Node.js `20` or newer. The project uses modern Vite and React Router packages that do not support old Node versions.
+Install JDK 21 (or a compatible newer JDK), and Node.js 20+ for the frontend. The Maven wrapper downloads Maven on its first run.
 
-### 1. Create the database
+### Database
 
 ```bash
-mysql -u root -p < backend/src/database/schema.sql
-mysql -u root -p < backend/src/database/seed.sql
+mysql -u root -p < backend/src/main/resources/database/schema.sql
+mysql -u root -p < backend/src/main/resources/database/seed.sql
 ```
 
-Seeded accounts use the password `Password@123`:
+Database: `campus_placement_portal`. **The schema script drops and recreates project tables; use it only for a fresh/disposable database.** Existing databases with the same schema can be reused without running these scripts.
 
-- `student@example.com`
-- `recruiter@example.com`
-- `admin@example.com`
+Demo accounts: `student@example.com`, `recruiter@example.com`, `admin@example.com`; password: `Password@123`.
 
-### 2. Start the backend
+### Backend
 
 ```bash
 cd backend
 cp .env.example .env
-npm install
-npm run dev
+# Edit .env with your MySQL credentials and a JWT_SECRET of at least 32 UTF-8 bytes.
+./mvnw spring-boot:run
 ```
 
-Update `.env` with your MySQL credentials before starting.
+On Windows use `mvnw.cmd`. The backend reads `.env` as Java properties from its working directory. Environment variables override file values. `JWT_TTL` is an ISO-8601 duration such as `PT24H`. API: `http://localhost:5000/api`; health: `/api/health`.
 
-### 3. Start the frontend
+```bash
+cd backend
+./mvnw clean verify
+java -jar target/placement-portal-1.0.0.jar
+```
+
+Tests run against an isolated H2 database in MySQL compatibility mode. Production uses MySQL; tests do not modify your MySQL data.
+
+### Frontend
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`. `VITE_API_URL` overrides the default API URL `http://localhost:5000/api`.
 
-## Project Structure
+## Docker
+
+```bash
+docker compose up --build
+```
+
+Open `http://localhost`. Nginx proxies `/api` to Spring Boot. MySQL initialization runs only when its data volume is empty. For an existing volume, ensure `campus_placement_portal` exists and set `DB_PASSWORD` to the existing root password. Set `JWT_SECRET`, `DB_PASSWORD`, and (if using another origin) `FRONTEND_URL` through your shell or a root `.env` file. Demo defaults are for local use.
+
+## Structure
 
 ```text
-backend/src
-  config        Environment and database config
-  controllers   Request/response handlers
-  services      Business logic and SQL queries
-  routes        API route declarations
-  middleware    Auth, role, validation, and error middleware
-  database      MySQL schema and seed data
-  utils         JWT, password, response helpers
-
-frontend/src
-  pages         Route-level screens
-  components    Reusable UI components
-  services      Axios API functions
-  context       Authentication context
-  hooks         Shared hooks
-  utils         Shared TypeScript types
+backend/
+  pom.xml, mvnw, mvnw.cmd     Maven build and wrapper
+  src/main/java/com/campusplacement/portal/
+    PlacementPortalApplication.java
+    PortalController.java    REST endpoints matching the React client
+    AuthService.java          Registration, login, BCrypt, JWT issuance
+    PortalService.java        Transactional business logic and parameterized SQL
+    SecurityConfig.java       Stateless JWT authentication, roles, CORS
+    Requests.java             Validated request DTOs
+    Api*.java                 Response envelope and error handling
+  src/main/resources/
+    application.properties
+    database/                 MySQL schema and seed scripts
+  src/test/                   API integration tests and isolated test schema
+frontend/src/
+  pages, components, services, context, hooks, utils
 ```
+
+The Node/Express backend has been removed; Node is used only to build/run the React frontend.
+
+## Demo limitations
+
+Admin self-registration remains available for compatibility with the existing demo UI; restrict admin provisioning before public deployment. Resume storage is a URL field. Eligibility criteria are descriptive text. Application status values are modeled in SQL but there is no status-update endpoint. Logout clears the browser token; issued JWTs remain valid until expiry.
 
 ## Documentation
 
